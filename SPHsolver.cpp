@@ -16,7 +16,6 @@ SPHsolver::SPHsolver()
     mass = 2.5f;
     dt = 0.005f;
     hsq = h * h;
-    sigma = 00000.f;
     bound_damp = -0.5f;
     max_particles = 2000;
     dam_particles = 1000;
@@ -60,7 +59,11 @@ void SPHsolver::step()
         PredictDensity();
         UpdatePressure();
         ComputePressureForces();
-        Check(tag);
+        if (CheckConvergence())
+        {
+            std::cout << "Converged at iteration " << iter << std::endl;
+            break;
+        }
     }
     Integrate();
 }
@@ -79,7 +82,7 @@ void SPHsolver::InitPrediction()
     for (auto& p : particles)
     {
         p.v_pred = p.v + dt * p.f_nonpressure / mass;
-        p.x_pred = p.x + dt * p.v_pred;
+        p.x_pred = p.x + dt * p.v;
     }
 }
 
@@ -111,7 +114,7 @@ void SPHsolver::ComputeNonPressureForces()
             float r = rij.norm();
             if (r < h)
             {
-                fvisc += visc * mass * (pj.v - pi.v) / pj.rho * visc_lap * (h - r);
+                 fvisc += visc * mass * (pj.v - pi.v) / (pi.rho * pj.rho) * visc_lap * (h - r);
             }
         }
 
@@ -194,21 +197,25 @@ void SPHsolver::ComputePressureForces()
             float r = rij.norm();
             if(r < h && r > 1e-6f)
             {
-              fpress += -rij.normalized() * /*mass **/ mass * (pi.p/(pi.rho_pred * pi.rho_pred) + pj.p/(pj.rho_pred * pj.rho_pred))  * spiky_grad * pow(h - r, 3.f);
+                float pressure_term = (pi.p / (pi.rho_pred * pi.rho_pred)) + (pj.p / (pj.rho_pred * pj.rho_pred));
+                fpress += -rij. normalized() * mass * pressure_term * spiky_grad * pow(h - r, 3.f);
             }
         }
         pi.f = fpress;
     }
 }
 
-int SPHsolver::Check(int tag)
+bool SPHsolver::CheckConvergence()
 {
+    // 检查所有粒子的最大密度误差
     float max_error = 0.f;
-    for(auto& p : particles)
+    for (auto& p : particles)
     {
         max_error = std::max(max_error, std::abs(p.rho_error));
     }
-    return (max_error < 0.01) ? 0 : 1;
+    
+    // 如果最大误差小于阈值，则认为收敛
+    return max_error < 0.01f * rest_dens;
 }
 
 
