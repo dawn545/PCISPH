@@ -14,14 +14,11 @@ public:
 
     float h; // kernel radius
     float rest_dens; // rest density
-    float gas_const; // gas constant
     float visc; // viscosity constant
     float mass; // particle mass
     float dt; // time step
     float hsq; // radius squared for optimization
-    float sigma;//surface tension parameter
     float delta;
-    int tag;
 
     // smoothing kernels  
     float poly6;
@@ -48,6 +45,6 @@ public:
     void PredictDensity();
     void UpdatePressure();
     void ComputePressureForces();
-    int Check(int tag);
+    bool CheckConvergence();
     void Integrate();
 };
