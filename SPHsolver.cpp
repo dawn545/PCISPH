@@ -25,7 +25,7 @@ SPHsolver::SPHsolver()
     spiky_grad = -10.f / (M_PI * pow(h,5.f));
     visc_lap = 40.f / (M_PI * pow(h,5.f));
     eps = h;
-    delta = 1.f * rest_dens * rest_dens / ( dt * dt);
+    delta = 1.f / (rest_dens * rest_dens * dt * dt);
 }
 
 void SPHsolver::InitSPH()
@@ -194,7 +194,7 @@ void SPHsolver::ComputePressureForces()
             float r = rij.norm();
             if(r < h && r > 1e-6f)
             {
-              fpress += -rij.normalized() * /*mass **/ mass * (pi.p/(pi.rho_pred * pi.rho_pred) + pj.p/(pi.rho_pred * pi.rho_pred))  * spiky_grad * pow(h - r, 3.f);
+              fpress += -rij.normalized() * /*mass **/ mass * (pi.p/(pi.rho_pred * pi.rho_pred) + pj.p/(pj.rho_pred * pj.rho_pred))  * spiky_grad * pow(h - r, 3.f);
             }
         }
         pi.f = fpress;
@@ -203,15 +203,12 @@ void SPHsolver::ComputePressureForces()
 
 int SPHsolver::Check(int tag)
 {
-   for(auto& p : particles)
-   {
-       if(p.rho_error < 0.01 )
-       {
-           return tag=1;
-       }
-   }
-
-   return tag;
+    float max_error = 0.f;
+    for(auto& p : particles)
+    {
+        max_error = std::max(max_error, std::abs(p.rho_error));
+    }
+    return (max_error < 0.01) ? 0 : 1;
 }
 
 
